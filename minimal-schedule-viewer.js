@@ -149,8 +149,8 @@
     button:focus-visible{outline:2px solid var(--primary-color,#03a9f4);outline-offset:2px}
     .status,.errors{margin:6px 12px;font-size:12px;overflow-wrap:anywhere}
     .status{color:var(--secondary-text-color)}.errors{background:#b71c1c;color:#ffffff;padding:8px;border-radius:6px}.errors p{margin:3px 0}
-    .scroll{overflow-x:auto;padding:0 8px 13px}
-    .week{min-width:280px;display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));padding-top:4px;position:relative}
+    .scroll{overflow-x:auto;overflow-y:visible;padding:0 8px 13px}
+    .week{min-width:280px;display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));padding-top:4px;position:relative;z-index:0;isolation:isolate}
     .heading{text-align:center;font-size:13px;font-weight:600;height:26px;white-space:nowrap}
     .heading.today{color:var(--today-marker-color,var(--primary-color,#03a9f4));background:color-mix(in srgb,var(--today-marker-color,var(--primary-color,#03a9f4)) 18%,transparent);border-bottom:2px solid var(--today-marker-color,var(--primary-color,#03a9f4))}
     .axis,.day{height:288px;position:relative}
@@ -159,7 +159,7 @@
     .day{border-left:1px solid var(--divider-color,#ddd);border-bottom:1px solid var(--divider-color,#ddd);background:repeating-linear-gradient(to bottom,var(--divider-color,#ddd) 0,var(--divider-color,#ddd) 1px,transparent 1px,transparent 36px)}
     .day.today{background-color:color-mix(in srgb,var(--primary-color,#03a9f4) 14%,transparent)}
     .day.today::after{content:"";position:absolute;inset:0;z-index:4;border-left:2px solid var(--today-marker-color,var(--primary-color,#03a9f4));border-right:2px solid var(--today-marker-color,var(--primary-color,#03a9f4));pointer-events:none}
-    .current-time{position:absolute;left:44px;right:0;z-index:5;height:2px;background:var(--current-time-color,var(--primary-color,#03a9f4));pointer-events:none}
+    .current-time{position:absolute;left:44px;right:0;z-index:10;height:2px;background:var(--current-time-color,var(--primary-color,#03a9f4));pointer-events:none}
     .current-time::before{content:"";position:absolute;left:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:inherit}
     .block{position:absolute;left:1px;right:1px;border-radius:2px;padding:0 2px;overflow:hidden;text-align:left;font-size:13px;line-height:14px;cursor:default;color:white}
     .schedule_name,.schedule_time{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

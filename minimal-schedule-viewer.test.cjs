@@ -93,7 +93,7 @@ test('official response request, error retention, HTML escaping and stale respon
   assert.equal((root.innerHTML.match(/class="heading day_style today"/g) || []).length, 1);
   assert.equal((root.innerHTML.match(/class="day today"/g) || []).length, 1);
   assert.equal((root.innerHTML.match(/class="current-time"/g) || []).length, 1);
-  assert.ok(root.innerHTML.includes(".current-time{position:absolute;left:44px;right:0;z-index:5;"));
+  assert.ok(root.innerHTML.includes(".current-time{position:absolute;left:44px;right:0;z-index:10;"));
   assert.match(root.innerHTML, /class="current-time" style="top:[\d.]+px"/);
   assert.match(root.innerHTML, /aria-label="Current time \d{2}:\d{2}"/);
   card._config = normalizeConfig({ ...config, highlight_today_color: '#abc', 'current-time_color': '#123456' });
