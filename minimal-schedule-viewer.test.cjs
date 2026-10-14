@@ -15,7 +15,7 @@ function setup(transform = s => s) {
   };
   vm.createContext(context);
   // Expose pure parsing functions only inside the isolated test context.
-  vm.runInContext(transform(fs.readFileSync('minimal-schedule-viewer.js', 'utf8')).replace('  const STYLE =', '  globalThis.helpers = { time, mode, parseWeek, escape, normalizeConfig, foreground };\n  const STYLE ='), context);
+  vm.runInContext(transform(fs.readFileSync('minimal-schedule-viewer.js', 'utf8')).replace('  const STYLE =', '  globalThis.helpers = { time, mode, parseWeek, escape, normalizeConfig, foreground, getCurrentTimeInZone, resolveTimeZone, getCurrentTimeTop };\n  const STYLE ='), context);
   const config = context.helpers.normalizeConfig({ entity: 'schedule.test', data_key: 'modus', states: {
     komfort: { label: 'Komfort', color: '#2e8540' }, reduziert: { label: 'Reduziert', color: '#1976c9' }, abwesend: { label: 'Abwesend', color: '#f39a00' }
   } });
@@ -31,6 +31,20 @@ test('time validation and HA midnight sentinel', () => {
   assert.equal(time('23:59:59.999999', true), 1440);
   assert.equal(time('12:30:30'), 750.5);
   for (const value of [undefined, null, '24:00', '25:00', '12:60', '10:00:60', '10:00oops', '1:00']) assert.ok(Number.isNaN(time(value)));
+});
+test('current day and minute follow the configured Home Assistant timezone', () => {
+  const { getCurrentTimeInZone, resolveTimeZone, getCurrentTimeTop } = setup();
+  const date = new Date(Date.UTC(2026, 9, 14, 17, 30, 0));
+  const utc = getCurrentTimeInZone(date, 'UTC');
+  const newYork = getCurrentTimeInZone(date, 'America/New_York');
+  const berlin = getCurrentTimeInZone(date, 'Europe/Berlin');
+  assert.equal(utc.today, 2); assert.equal(utc.currentMinute, 1050);
+  assert.equal(newYork.today, 2); assert.equal(newYork.currentMinute, 810);
+  assert.equal(berlin.today, 2); assert.equal(berlin.currentMinute, 1170);
+  assert.equal(resolveTimeZone({ config: { time_zone: 'Europe/Berlin' }, locale: { timezone: 'UTC' } }), 'Europe/Berlin');
+  assert.equal(resolveTimeZone({ config: { timezone: 'America/New_York' } }), 'America/New_York');
+  assert.equal(getCurrentTimeTop(720, 42, 300), 42 + 150);
+  assert.equal(getCurrentTimeTop(0, 42, 300), 42);
 });
 test('mode colors, missing values, strict typos, safe text', () => {
   const { mode, escape } = setup();
@@ -80,7 +94,7 @@ test('official response request, error retention, HTML escaping and stale respon
   assert.equal((root.innerHTML.match(/class="day today"/g) || []).length, 1);
   assert.equal((root.innerHTML.match(/class="current-time"/g) || []).length, 1);
   assert.ok(root.innerHTML.includes(".current-time{position:absolute;left:44px;right:0;z-index:5;"));
-  assert.match(root.innerHTML, /class="current-time" style="top:calc\(30px \+ [\d.]+%\)"/);
+  assert.match(root.innerHTML, /class="current-time" style="top:[\d.]+px"/);
   assert.match(root.innerHTML, /aria-label="Current time \d{2}:\d{2}"/);
   card._config = normalizeConfig({ ...config, highlight_today_color: '#abc', 'current-time_color': '#123456' });
   card._render();

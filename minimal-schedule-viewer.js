@@ -32,6 +32,35 @@
   }
   const formatTime = (v) => `${String(Math.floor(v / 60)).padStart(2, "0")}:${String(Math.floor(v % 60)).padStart(2, "0")}`;
   const validColor = (value) => typeof value === "string" && /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(value);
+  function resolveTimeZone(hass) {
+    return hass?.config?.time_zone || hass?.config?.timezone || hass?.locale?.timezone || hass?.locale?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone || undefined;
+  }
+  function getCurrentTimeInZone(date = new Date(), timeZone) {
+    const zone = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (!zone) {
+      const localDate = new Date(date);
+      return { today: (localDate.getDay() + 6) % 7, currentMinute: localDate.getHours() * 60 + localDate.getMinutes() };
+    }
+    try {
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: zone,
+        weekday: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }).formatToParts(date);
+      const fields = Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, part.value]));
+      const weekday = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(fields.weekday);
+      const minute = Number(fields.hour || 0) * 60 + Number(fields.minute || 0);
+      return { today: weekday >= 0 ? weekday : (new Date(date).getDay() + 6) % 7, currentMinute: minute };
+    } catch {
+      const localDate = new Date(date);
+      return { today: (localDate.getDay() + 6) % 7, currentMinute: localDate.getHours() * 60 + localDate.getMinutes() };
+    }
+  }
+  function getCurrentTimeTop(currentMinute, offset = 30, dayHeight = 288) {
+    return offset + (currentMinute / 1440) * dayHeight;
+  }
   function normalizeConfig(config) {
     if (!object(config) || typeof config.entity !== "string" || !/^schedule\.[a-z0-9_]+$/.test(config.entity)) {
       throw new Error("Minimal Schedule Viewer: entity must be a schedule entity ID.");
@@ -49,10 +78,10 @@
       throw new Error("Minimal Schedule Viewer: show_today and show_current_time must be booleans.");
     }
     const todayColor = config.highlight_today_color;
-    const currentTimeColor = config["current-time_color"];
+    const currentTimeColor = config["current_time_color"] ?? config["current-time_color"];
     if ((todayColor !== undefined && !validColor(todayColor)) ||
         (currentTimeColor !== undefined && !validColor(currentTimeColor))) {
-      throw new Error("Minimal Schedule Viewer: highlight_today_color and current-time_color must be #RGB or #RRGGBB colors.");
+      throw new Error("Minimal Schedule Viewer: highlight_today_color and current_time_color must be #RGB or #RRGGBB colors.");
     }
     if (!object(config.states)) throw new Error("Minimal Schedule Viewer: states must be a mapping.");
     const states = Object.create(null);
@@ -62,7 +91,7 @@
       }
       states[value] = { label: entry.label, color: entry.color };
     }
-    return { entity: config.entity, data_key: config.data_key, days: [...days], states, show_today: showToday, show_current_time: showCurrentTime, highlight_today_color: todayColor, "current-time_color": currentTimeColor };
+    return { entity: config.entity, data_key: config.data_key, days: [...days], states, show_today: showToday, show_current_time: showCurrentTime, highlight_today_color: todayColor, "current_time_color": currentTimeColor };
   }
   // Choose black or white text using relative luminance for both HA themes.
   function foreground(hex) {
@@ -257,12 +286,16 @@
       if (!this._config) return;
       const entity = this._hass?.states[this._config.entity];
       const title = entity?.attributes?.friendly_name || this._config.entity;
-      const now = new Date();
-      const today = (now.getDay() + 6) % 7;
-      const currentMinute = now.getHours() * 60 + now.getMinutes();
+      const timeZone = resolveTimeZone(this._hass);
+      const { today, currentMinute } = getCurrentTimeInZone(new Date(), timeZone);
+      const week = this.shadowRoot.querySelector(".week");
+      const firstDay = this.shadowRoot.querySelector(".day");
+      const offset = week && firstDay ? firstDay.getBoundingClientRect().top - week.getBoundingClientRect().top : 30;
+      const dayHeight = firstDay?.getBoundingClientRect().height || 288;
+      const currentTop = getCurrentTimeTop(currentMinute, offset, dayHeight);
       const markerColors = [
         this._config.highlight_today_color && `--today-marker-color:${this._config.highlight_today_color}`,
-        this._config["current-time_color"] && `--current-time-color:${this._config["current-time_color"]}`,
+        (this._config["current_time_color"] ?? this._config["current-time_color"]) && `--current-time-color:${this._config["current_time_color"] ?? this._config["current-time_color"]}`,
       ].filter(Boolean).join(";");
       const errors = this._week?.flatMap((day) => day.errors) || [];
       const issue = !this._hass ? "Waiting for Home Assistant …" : !entity ? `Entity ${this._config.entity} not found.`
@@ -281,7 +314,7 @@
           ${this._week.map((day, index) => `<div class="day${this._config.show_today && index === today ? " today" : ""}" aria-label="${escape(day.name)}">${day.blocks.map((block) => {
             const label = `${day.name}, ${formatTime(block.start)}–${formatTime(block.end)}: ${block.label}${block.detail ? ` (${block.detail})` : ""}`;
             return `<div class="block ${block.kind}" style="background:${block.color};color:${foreground(block.color)};top:${block.start / 1440 * 100}%;height:${(block.end - block.start) / 1440 * 100}%" title="${escape(label)}" aria-label="${escape(label)}"><strong class="schedule_name">${escape(block.label)}</strong><small class="schedule_time">${formatTime(block.start)}–${formatTime(block.end)}</small></div>`;
-          }).join("")}</div>`).join("")}${this._config.show_current_time ? `<div class="current-time" style="top:calc(30px + ${currentMinute / 1440 * 100}%)" aria-label="Current time ${formatTime(currentMinute)}" title="Current time ${formatTime(currentMinute)}"></div>` : ""}</div></div>` : ""}
+          }).join("")}</div>`).join("")}${this._config.show_current_time ? `<div class="current-time" style="top:${currentTop}px" aria-label="Current time ${formatTime(currentMinute)}" title="Current time ${formatTime(currentMinute)}"></div>` : ""}</div></div>` : ""}
       </ha-card>`;
       const scroller = this.shadowRoot.querySelector(".scroll");
       if (scroller) scroller.scrollLeft = scroll;
