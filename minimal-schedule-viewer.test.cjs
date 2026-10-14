@@ -58,7 +58,7 @@ test('full week, proportional bounds, invalid days/times and overlaps', () => {
   assert.throws(() => parseWeek(null));
 });
 test('official response request, error retention, HTML escaping and stale response protection', async () => {
-  const { Card, root, config } = setup();
+  const { Card, root, config, normalizeConfig } = setup();
   const card = new Card();
   card.setConfig(config);
   const raw = empty();
@@ -76,6 +76,25 @@ test('official response request, error retention, HTML escaping and stale respon
   assert.ok(root.innerHTML.includes('height:100%'));
   assert.equal((root.innerHTML.match(/class="tick hour_style"/g) || []).length, 9);
   assert.ok(root.innerHTML.includes('>Mon</div>'));
+  assert.equal((root.innerHTML.match(/class="heading day_style today"/g) || []).length, 1);
+  assert.equal((root.innerHTML.match(/class="day today"/g) || []).length, 1);
+  assert.equal((root.innerHTML.match(/class="current-time"/g) || []).length, 1);
+  assert.ok(root.innerHTML.includes(".current-time{position:absolute;left:44px;right:0;z-index:5;"));
+  assert.match(root.innerHTML, /class="current-time" style="top:calc\(30px \+ [\d.]+%\)"/);
+  assert.match(root.innerHTML, /aria-label="Current time \d{2}:\d{2}"/);
+  card._config = normalizeConfig({ ...config, highlight_today_color: '#abc', 'current-time_color': '#123456' });
+  card._render();
+  assert.ok(root.innerHTML.includes('style="--today-marker-color:#abc;--current-time-color:#123456"'));
+  assert.ok(root.innerHTML.includes('var(--today-marker-color,var(--primary-color,#03a9f4))'));
+  assert.ok(root.innerHTML.includes('var(--current-time-color,var(--primary-color,#03a9f4))'));
+  card._config = config;
+  card._render();
+  card._config = normalizeConfig({ ...config, show_today: false, show_current_time: false });
+  card._render();
+  assert.equal((root.innerHTML.match(/class="heading day_style today"/g) || []).length, 0);
+  assert.equal((root.innerHTML.match(/class="day today"/g) || []).length, 0);
+  assert.equal((root.innerHTML.match(/class="current-time"/g) || []).length, 0);
+  card._config = config;
   assert.ok(!root.innerHTML.includes('<button class="block'));
   assert.ok(!root.innerHTML.includes('class="legend"'));
   assert.ok(!root.innerHTML.includes('data-action="refresh"'));
@@ -119,9 +138,13 @@ test('reload once after own helper dialog closes; ignore other dialogs and state
 
 test('configuration validation, independent mappings and contrast', () => {
   const { normalizeConfig, foreground, config, Card } = setup();
+  assert.equal(normalizeConfig(config).show_today, true);
+  assert.equal(normalizeConfig(config).show_current_time, true);
+  assert.equal(normalizeConfig(config).highlight_today_color, undefined);
+  assert.equal(normalizeConfig(config)['current-time_color'], undefined);
   assert.equal(foreground('#fff'), '#000000');
   assert.equal(foreground('#000000'), '#ffffff');
-  for (const patch of [{days: ['Mon']}, {data_key: ''}, {states: []}, {states: {x: {label: 'X', color: '#FF000'}}}, {entity: 'sensor.test'}]) {
+  for (const patch of [{days: ['Mon']}, {data_key: ''}, {states: []}, {states: {x: {label: 'X', color: '#FF000'}}}, {entity: 'sensor.test'}, {show_today: 'false'}, {show_current_time: 0}, {highlight_today_color: 'blue'}, {'current-time_color': '#12'}]) {
     assert.throws(() => normalizeConfig({...config, ...patch}));
   }
   const first = new Card(), second = new Card();
