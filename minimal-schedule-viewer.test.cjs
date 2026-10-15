@@ -5,6 +5,50 @@
  */
 (() => {
   "use strict";
+  const hasWindow = typeof window !== "undefined";
+  const hasDocument = typeof document !== "undefined";
+  const hasHTMLElement = typeof HTMLElement !== "undefined";
+  const hasCustomElements = typeof customElements !== "undefined";
+  if (!hasWindow) globalThis.window = globalThis;
+  if (!hasDocument) {
+    globalThis.document = {
+      hidden: false,
+      addEventListener() {},
+      removeEventListener() {},
+      querySelector() { return null; },
+      querySelectorAll() { return []; },
+    };
+  }
+  if (!hasHTMLElement) {
+    globalThis.HTMLElement = class {
+      attachShadow() {
+        return {
+          addEventListener() {},
+          querySelector() { return null; },
+          querySelectorAll() { return []; },
+          innerHTML: "",
+        };
+      }
+      dispatchEvent() { return true; }
+      get isConnected() { return true; }
+    };
+  }
+  if (!hasCustomElements) {
+    globalThis.customElements = {
+      get() { return undefined; },
+      define() {},
+    };
+  }
+  if (typeof ResizeObserver === "undefined") {
+    globalThis.ResizeObserver = class {
+      observe() {}
+      disconnect() {}
+    };
+  }
+  if (typeof requestAnimationFrame !== "function") {
+    globalThis.requestAnimationFrame = (callback) => setTimeout(callback, 0);
+    globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+  }
   const VERSION = "0.1.8";
   const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   const DEFAULT_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -350,9 +394,10 @@
       this._fitFrame = requestAnimationFrame(() => this._fitTimes());
     }
   }
-  if (!customElements.get("minimal-schedule-viewer")) customElements.define("minimal-schedule-viewer", MinimalScheduleViewer);
-  window.customCards = window.customCards || [];
-  if (!window.customCards.some((card) => card.type === "minimal-schedule-viewer")) {
-    window.customCards.push({ type: "minimal-schedule-viewer", name: "Minimal Schedule Viewer", description: "Compact weekly timeline for native schedule helpers", preview: false });
+  if (typeof customElements !== "undefined" && !customElements.get("minimal-schedule-viewer")) customElements.define("minimal-schedule-viewer", MinimalScheduleViewer);
+  const rootWindow = typeof window !== "undefined" ? window : globalThis;
+  rootWindow.customCards = rootWindow.customCards || [];
+  if (!rootWindow.customCards.some((card) => card.type === "minimal-schedule-viewer")) {
+    rootWindow.customCards.push({ type: "minimal-schedule-viewer", name: "Minimal Schedule Viewer", description: "Compact weekly timeline for native schedule helpers", preview: false });
   }
 })();

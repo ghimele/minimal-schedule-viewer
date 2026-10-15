@@ -162,17 +162,17 @@
     .scroll{overflow-x:auto;overflow-y:visible;padding:0 8px 13px}
     .week{min-width:280px;display:grid;grid-template-columns:44px repeat(7,minmax(0,1fr));padding-top:4px;position:relative;z-index:0;isolation:isolate}
     .heading{text-align:center;font-size:13px;font-weight:600;height:26px;white-space:nowrap}
-    .heading.today{color:var(--today-marker-color,var(--primary-color,#03a9f4));background:color-mix(in srgb,var(--today-marker-color,var(--primary-color,#03a9f4)) 18%,transparent);border-bottom:2px solid var(--today-marker-color,var(--primary-color,#03a9f4))}
+    .heading.today{color:var(--today-marker-color,var(--primary-color,#03a9f4));background:color-mix(in srgb,var(--today-marker-color,var(--primary-color,#03a9f4)) 18%,transparent)}
     .axis,.day{height:288px;position:relative}
     .axis{position:sticky;left:0;z-index:2;background:var(--ha-card-background,var(--card-background-color,#fff))}
     .tick{position:absolute;right:4px;transform:translateY(-50%);font-size:12px;color:var(--primary-text-color)}
     .day{border-left:1px solid var(--divider-color,#ddd);border-bottom:1px solid var(--divider-color,#ddd);background:repeating-linear-gradient(to bottom,var(--divider-color,#ddd) 0,var(--divider-color,#ddd) 1px,transparent 1px,transparent 36px)}
-    .day.today{background-color:color-mix(in srgb,var(--primary-color,#03a9f4) 14%,transparent)}
     .day.today::after{content:"";position:absolute;inset:0;z-index:4;border-left:2px solid var(--today-marker-color,var(--primary-color,#03a9f4));border-right:2px solid var(--today-marker-color,var(--primary-color,#03a9f4));pointer-events:none}
     .current-time{position:absolute;left:44px;right:0;z-index:10;height:2px;background:var(--current-time-color,var(--primary-color,#03a9f4));pointer-events:none}
     .current-time::before{content:"";position:absolute;left:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:inherit}
     .blocks-layer{position:absolute;left:44px;right:0;top:30px;height:288px;pointer-events:none;z-index:1}
     .block{position:absolute;display:flex;flex-direction:column;justify-content:var(--schedule-label-vertical-alignment,flex-start);border-radius:2px;padding:0 2px;overflow:hidden;text-align:left;font-size:13px;line-height:14px;cursor:default;color:white;pointer-events:auto}
+    .today-overlay{position:absolute;top:0;bottom:0;width:calc(100% / 7);background:rgba(255,255,255,0.18);pointer-events:none;z-index:2}
     .schedule_name,.schedule_time{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:var(--schedule-label-alignment,left)}
     ${TEXT_STYLES}
   `;
@@ -369,7 +369,7 @@
             const span = endDay - startDay + 1;
             const label = `${dayLabel}, ${formatTime(block.start)}–${formatTime(block.end)}: ${block.label}${block.detail ? ` (${block.detail})` : ""}`;
             return `<div class="block ${block.kind}" style="left:calc(${startDay / 7 * 100}% + 1px);width:calc(${span / 7 * 100}% - 2px);top:${block.start / 1440 * 100}%;height:calc(${(block.end - block.start) / 1440 * 100}% - 2px);background:${block.color};color:${foreground(block.color)}" title="${escape(label)}" aria-label="${escape(label)}"><strong class="schedule_name">${escape(block.label)}</strong><small class="schedule_time">${formatTime(block.start)}–${formatTime(block.end)}</small></div>`;
-          }).join("")}</div>${this._config.show_current_time ? `<div class="current-time" style="top:${currentTop}px" aria-label="Current time ${formatTime(currentMinute)}" title="Current time ${formatTime(currentMinute)}"></div>` : ""}</div></div>` : ""}
+          }).join("")}${this._config.show_today ? `<div class="today-overlay" style="left:${today / 7 * 100}%;width:calc(100% / 7)" aria-hidden="true"></div>` : ""}</div>${this._config.show_current_time ? `<div class="current-time" style="top:${currentTop}px" aria-label="Current time ${formatTime(currentMinute)}" title="Current time ${formatTime(currentMinute)}"></div>` : ""}</div></div>` : ""}
       </ha-card>`;
       const scroller = this.shadowRoot.querySelector(".scroll");
       if (scroller) scroller.scrollLeft = scroll;
